@@ -1,27 +1,12 @@
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import request, jsonify, current_app as app
+from . import db
+from .models import Task
 
-# Flask app initialization
-app = Flask(_name_)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:root%40123@localhost/task_manager'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-# Task model definition
-class Task(db.Model):
-    _tablename_ = 'Tasks'
-    sno = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(300), nullable=False)
-    description = db.Column(db.String(500), nullable=False)
-    status = db.Column(db.String(50), nullable=False, default='Pending')
-    date_created = db.Column(db.DateTime, default=datetime.utcnow)
-
-# Add a new task
 @app.route('/api/task', methods=['POST'])
 def add_task():
     data = request.get_json()
-    sno = data.get("sno")
+    id = data.get("id")
     title = data.get("title")
     description = data.get("description")
     status = data.get("status", "Pending")
@@ -31,15 +16,15 @@ def add_task():
     if not title:
         return jsonify({'message': 'Title is mandatory'}), 400
 
-    new_task = Task(sno=sno, title=title, description=description, status=status)
+    new_task = Task(id=id, title=title, description=description, status=status)
     db.session.add(new_task)
     db.session.commit()
     return jsonify({'message': 'Task added successfully'}), 201
 
-# Delete a task by serial number
-@app.route('/api/task/<int:serialno>', methods=['DELETE'])
-def delete_task(serialno):
-    task = Task.query.get(serialno)
+# Delete a task by id
+@app.route('/api/task/<int:id>', methods=['DELETE'])
+def delete_task(id):
+    task = Task.query.get(id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
     db.session.delete(task)
@@ -56,7 +41,7 @@ def get_tasks():
         tasks = Task.query.all()
     result = [
         {
-            'sno': task.sno,
+            'id': task.id,
             'title': task.title,
             'description': task.description,
             'status': task.status,
@@ -66,14 +51,14 @@ def get_tasks():
     ]
     return jsonify(result), 200
 
-# Get a single task by serial number
-@app.route('/api/task/<int:sno>', methods=['GET'])
-def get_task(sno):
-    task = Task.query.get(sno)
+# Get a single task by id
+@app.route('/api/task/<int:id>', methods=['GET'])
+def get_task(id):
+    task = Task.query.get(id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
     result = {
-        'sno': task.sno,
+        'id': task.id,
         'title': task.title,
         'description': task.description,
         'status': task.status,
@@ -81,10 +66,10 @@ def get_task(sno):
     }
     return jsonify(result), 200
 
-# Update a task by serial number
-@app.route('/api/task/<int:serialno>', methods=['PUT'])
-def update_task(serialno):
-    task = Task.query.get(serialno)
+# Update a task by id
+@app.route('/api/task/<int:id>', methods=['PUT'])
+def update_task(id):
+    task = Task.query.get(id)
     if not task:
         return jsonify({'error': 'Task not found'}), 404
     data = request.get_json()
@@ -103,9 +88,3 @@ def update_task(serialno):
 
     db.session.commit()
     return jsonify({'message': 'Task updated successfully'}), 200
-
-# Run the Flask app
-if _name_ == '_main_':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True, port=5000)
